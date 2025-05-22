@@ -1,0 +1,15 @@
+Upstream-Status: Backport [https://github.com/raspberrypi/libcamera.git/commit/?id=2993e7953e2f3ce374fd1d5a5adde15ce6918692]
+---
+
+
+--- a/src/ipa/rpi/cam_helper/cam_helper_imx500.cpp	2025-05-18 13:13:35.238622743 +0200
++++ b/src/ipa/rpi/cam_helper/cam_helper_imx500.cpp	2025-05-18 13:13:52.441754039 +0200
+@@ -246,7 +246,7 @@
+ 				exported.height = inputTensorInfo.height;
+ 				exported.numChannels = inputTensorInfo.channels;
+ 				strncpy(exported.networkName, inputTensorInfo.networkName.c_str(),
+-					sizeof(exported.networkName));
++					sizeof(exported.networkName)-1);
+ 				exported.networkName[sizeof(exported.networkName) - 1] = '\0';
+ 				metadata.set("cnn.input_tensor_info", exported);
+ 				metadata.set("cnn.input_tensor", std::move(inputTensorInfo.data));
