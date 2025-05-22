@@ -1,0 +1,61 @@
+From 289fd2cddfacb1a593b23b266811793720d007d8 Mon Sep 17 00:00:00 2001
+From: Dave Stevenson <dave.stevenson@raspberrypi.com>
+Date: Thu, 13 Mar 2025 11:30:59 +0000
+Subject: [PATCH] dri: Add RP1 kmsro devices to the magic table
+Upstream-Status: Inappropriate [RPi]
+
+Without these entries the RP1 DRM devices are rejected as not
+supporting DRI3, and things like vkcube and rpicam-hello will
+fail to start
+---
+ src/gallium/targets/dri/dri_target.c   | 9 +++++++++
+ src/gallium/targets/dril/dril_target.c | 3 +++
+ src/gallium/targets/dril/meson.build   | 3 +++
+ 3 files changed, 15 insertions(+)
+
+--- a/src/gallium/targets/dri/dri_target.c
++++ b/src/gallium/targets/dri/dri_target.c
+@@ -136,6 +136,9 @@ DEFINE_LOADER_DRM_ENTRYPOINT(sun4i_drm)
+ DEFINE_LOADER_DRM_ENTRYPOINT(udl)
+ DEFINE_LOADER_DRM_ENTRYPOINT(vkms)
+ DEFINE_LOADER_DRM_ENTRYPOINT(zynqmp_dpsub)
++DEFINE_LOADER_DRM_ENTRYPOINT(drm_rp1_dpi)
++DEFINE_LOADER_DRM_ENTRYPOINT(drm_rp1_dsi)
++DEFINE_LOADER_DRM_ENTRYPOINT(drm_rp1_vec)
+ #endif
+ 
+ #if defined(GALLIUM_LIMA)
+@@ -322,6 +325,12 @@ dri_loader_get_extensions(const char *dr
+       return __driDriverGetExtensions_vkms();
+    if (!strcmp(driver_name, "zynqmp-dpsub"))
+       return __driDriverGetExtensions_zynqmp_dpsub();
++   if (!strcmp(driver_name, "drm-rp1-dpi"))
++      return __driDriverGetExtensions_drm_rp1_dpi();
++   if (!strcmp(driver_name, "drm-rp1-dsi"))
++      return __driDriverGetExtensions_drm_rp1_dsi();
++   if (!strcmp(driver_name, "drm-rp1-vec"))
++      return __driDriverGetExtensions_drm_rp1_vec();
+ #endif
+ 
+ #if defined(HAVE_LIMA)
+--- a/src/gallium/targets/dril/dril_target.c
++++ b/src/gallium/targets/dril/dril_target.c
+@@ -629,3 +629,6 @@ DEFINE_LOADER_DRM_ENTRYPOINT(zynqmp_dpsu
+ DEFINE_LOADER_DRM_ENTRYPOINT(lima)
+ DEFINE_LOADER_DRM_ENTRYPOINT(d3d12)
+ DEFINE_LOADER_DRM_ENTRYPOINT(zink)
++DEFINE_LOADER_DRM_ENTRYPOINT(drm_rp1_dpi)
++DEFINE_LOADER_DRM_ENTRYPOINT(drm_rp1_dsi)
++DEFINE_LOADER_DRM_ENTRYPOINT(drm_rp1_vec)
+--- a/src/gallium/targets/dril/meson.build
++++ b/src/gallium/targets/dril/meson.build
+@@ -99,6 +99,9 @@ foreach d : [[with_gallium_kmsro, [
+                'udl_dri.so',
+                'vkms_dri.so',
+                'zynqmp-dpsub_dri.so',
++               'drm-rp1-dpi_dri.so',
++               'drm-rp1-dsi_dri.so',
++               'drm-rp1-vec_dri.so',
+              ]],
+              [with_gallium_radeonsi, 'radeonsi_dri.so'],
+              [with_gallium_nouveau, 'nouveau_dri.so'],

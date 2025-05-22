@@ -1,0 +1,71 @@
+From c34c1ed8d7ad30ffbaa4fda32bbb905ab5dcd848 Mon Sep 17 00:00:00 2001
+From: Iago Toral Quiroga <itoral@igalia.com>
+Date: Wed, 11 Oct 2023 07:16:49 +0100
+Subject: [PATCH] dri: check attached outputs and resolution to decide max back
+ buffers for vsync
+Upstream-Status: Inappropriate [RPi]
+
+We had a previous fix for this with:
+"dri: Limit the max_num_back to 2 on COMPLETE_MODE_FLIP present mode"
+which would limit the maximum to 2 buffers instead of the default of 3,
+however, it has been observed that this limits vsync performance in
+some scenarios. Particularly, fullscreen through XWayland.
+
+The original patch was intended to reduce CMA pressure specifically
+for the case where we have two 4K displays attached, so this change
+expands the solution by checking whether this is the case and only
+limits the number of back buffers to 2 in that scenario, allowing other
+setups to run with 3 back buffers for optimal performance.
+---
+ src/loader/loader_dri3_helper.c | 28 +++++++++++++++++++++++++++-
+ 1 file changed, 27 insertions(+), 1 deletion(-)
+
+diff --git a/src/loader/loader_dri3_helper.c b/src/loader/loader_dri3_helper.c
+index 32135770e9d..b2206003581 100644
+--- a/src/loader/loader_dri3_helper.c
++++ b/src/loader/loader_dri3_helper.c
+@@ -267,6 +267,32 @@ dri3_fence_await(xcb_connection_t *c, struct loader_dri3_drawable *draw,
+    }
+ }
+ 
++static int
++get_max_num_back_vsync(struct loader_dri3_drawable *draw)
++{
++   int hi_count = 0;
++   xcb_randr_get_screen_resources_cookie_t gsr_c =
++      xcb_randr_get_screen_resources(draw->conn, draw->drawable);
++   xcb_randr_get_screen_resources_reply_t *gsr_r =
++      xcb_randr_get_screen_resources_reply(draw->conn, gsr_c, NULL);
++   if (gsr_r) {
++      xcb_randr_crtc_t *rc = xcb_randr_get_screen_resources_crtcs(gsr_r);
++      for (int c = 0; c < gsr_r->num_crtcs; c++) {
++         xcb_randr_get_crtc_info_cookie_t gci_c =
++            xcb_randr_get_crtc_info(draw->conn, rc[c], gsr_r->config_timestamp);
++         xcb_randr_get_crtc_info_reply_t *gci_r =
++            xcb_randr_get_crtc_info_reply(draw->conn, gci_c, NULL);
++         if (gci_r) {
++            if (gci_r->width * gci_r->height > 1920 * 1200)
++               hi_count++;
++            free(gci_r);
++         }
++      }
++      free(gsr_r);
++   }
++   return hi_count > 1 ? 2 : 3;
++}
++
+ static void
+ dri3_update_max_num_back(struct loader_dri3_drawable *draw)
+ {
+@@ -275,7 +301,7 @@ dri3_update_max_num_back(struct loader_dri3_drawable *draw)
+       if (draw->swap_interval == 0)
+          draw->max_num_back = 4;
+       else
+-         draw->max_num_back = 3;
++         draw->max_num_back = get_max_num_back_vsync(draw);
+ 
+       assert(draw->max_num_back <= LOADER_DRI3_MAX_BACK);
+       break;
+-- 
+2.39.2
+
